@@ -1,8 +1,8 @@
 # Agentic_AI_University_Timetable_Scheduler
 This project automates the complex task of university course scheduling.
 
-> **A Human-in-the-Loop Optimization System**
-> Combines Google OR-Tools for mathematical constraint solving with a Generative AI Agent (OpenAI GPT) for interactive schedule repair and analysis.
+**A Human-in-the-Loop Optimization System**
+Combines Google OR-Tools for mathematical constraint solving with a Generative AI Agent (OpenAI GPT) for interactive schedule repair and analysis.
 
 ---
 
