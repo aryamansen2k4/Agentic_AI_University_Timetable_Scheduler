@@ -1,0 +1,11 @@
+streamlit
+pandas 
+ortools 
+langgraph
+langchain
+langchain-groq 
+langchain-core 
+ics 
+tabulate 
+openpyxl
+python-dotenv
