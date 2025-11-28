@@ -26,4 +26,4 @@ This project was chosen to demonstrate the powerful integration of LangGraph and
 ## Plan
 I plan to excecute these steps to complete my project.:
 
-1) [TODO]**Step 1: Data Modeling & Smart Ingestion**: Designed dataclasses for Courses, Rooms, and Faculty. Implemented a Smart Parser that accepts multiple CSV or Excel files, auto-detects the table type (Courses vs. Rooms) based on column keywords, and normalizes headers for the solver.
+1) [DONE]**Step 1: Data Modeling & Smart Ingestion**: Designed dataclasses for Courses, Rooms, and Faculty. Implemented a Smart Parser that accepts multiple CSV or Excel files, auto-detects the table type (Courses vs. Rooms) based on column keywords, and normalizes headers for the solver.
