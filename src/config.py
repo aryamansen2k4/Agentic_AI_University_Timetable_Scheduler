@@ -38,12 +38,12 @@ SLOTS_TTH = TOTAL_SLOTS
 # --- OVERLAP CALCULATION ---
 # This ensures the solver knows that Slot 0 (08:00-09:00) overlaps with Slot 8 (08:30-10:00)
 
-def parse_time(t_str): # type: ignore
+def parse_time(t_str):
     """Converts '08:30' to minutes from midnight."""
     t = datetime.strptime(t_str, "%H:%M")
     return t.hour * 60 + t.minute
 
-def check_overlap(t1_str, t2_str): # type: ignore
+def check_overlap(t1_str, t2_str):
     """Returns True if two time strings overlap."""
     s1, e1 = map(parse_time, t1_str.split('-'))
     s2, e2 = map(parse_time, t2_str.split('-'))
@@ -71,5 +71,5 @@ REVERSE_TIME_MAP = {}
 for day, times in TIME_MAP.items():
     REVERSE_TIME_MAP[day] = {t: i for i, t in enumerate(times)}
 
-def get_slot_from_time(day, time_str): # type: ignore
+def get_slot_from_time(day, time_str):
     return REVERSE_TIME_MAP.get(day, {}).get(time_str)

@@ -7,13 +7,14 @@ class Course:
     hours: float    # Float to support 1.5h classes
     group: str
     faculty: str
-    is_core: bool = True  # Used for soft constraint optimization
+    is_core: bool = True
+    capacity_needed: int = 0  # NEW: Optimization field
 
 @dataclass
 class Room:
     id: str
     capacity: int
-    type: str  # "Lecture", "Lab"
+    type: str
 
 @dataclass
 class Faculty:
