@@ -30,4 +30,4 @@ I plan to excecute these steps to complete my project.:
 
 2) [DONE] **Step 2: Constraint Solver Implementation**: Built the core engine using ```ortools.sat.python.cp_model```. I implemented hard constraints (no double-booking, room type matching) and pattern constraints (forcing Monday/Wednesday/Friday symmetry for 3-credit courses).
 
-3) [TODO] **Step 3: LangGraph Implementation**: Developed a StateGraph that orchestrates the flow between the Mathematical Solver and the AI Inspector. This graph handles the "state" of the schedule and ensures analysis runs only after a successful solve.
+3) [DONE] **Step 3: LangGraph Implementation**: Developed a StateGraph that orchestrates the flow between the Mathematical Solver and the AI Inspector. This graph handles the "state" of the schedule and ensures analysis runs only after a successful solve.
