@@ -27,3 +27,5 @@ This project was chosen to demonstrate the powerful integration of LangGraph and
 I plan to excecute these steps to complete my project.:
 
 1) [DONE]**Step 1: Data Modeling & Smart Ingestion**: Designed dataclasses for Courses, Rooms, and Faculty. Implemented a Smart Parser that accepts multiple CSV or Excel files, auto-detects the table type (Courses vs. Rooms) based on column keywords, and normalizes headers for the solver.
+
+2) [TODO] **Step 2: Constraint Solver Implementation**: Built the core engine using ```ortools.sat.python.cp_model```. I implemented hard constraints (no double-booking, room type matching) and pattern constraints (forcing Monday/Wednesday/Friday symmetry for 3-credit courses).
