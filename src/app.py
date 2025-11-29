@@ -371,6 +371,7 @@ with st.sidebar:
             st.session_state.overrides = []
             st.session_state.messages = []
             st.session_state.history = []
+            st.session_state.schedule = None
             st.session_state.trigger_solve = True
             st.rerun()
 
@@ -435,7 +436,9 @@ with st.sidebar:
                     valid_slots = [
                         ts for ts in TIME_SLOTS
                         if comp in ts.get("allowed_components", [])
+                        and selected_day in ts["days"]         # <-- ADD THIS LINE
                     ]
+
 
                     # Build readable options
                     slot_options_ui = [
@@ -609,17 +612,35 @@ else:
                         st.markdown(resp)
                         st.session_state.messages.append({"role": "assistant", "content": resp})
 
-                        # Try to parse overrides from JSON inside BEGIN_JSON ... END_JSON
-                        json_match = re.search(r"BEGIN_JSON(.*?)END_JSON", resp, re.DOTALL)
-                        if json_match:
+                        # ---------------------------------------------------------
+                        # FIX: ROBUST JSON EXTRACTION
+                        # ---------------------------------------------------------
+                        json_str = None
+                        
+                        # 1. Try finding BEGIN_JSON ... END_JSON
+                        match_tags = re.search(r"BEGIN_JSON(.*?)END_JSON", resp, re.DOTALL)
+                        if match_tags:
+                            json_str = match_tags.group(1).strip()
+                        
+                        # 2. If not found, try Markdown Code Blocks ```json ... ```
+                        if not json_str:
+                            match_code = re.search(r"```json(.*?)```", resp, re.DOTALL)
+                            if match_code:
+                                json_str = match_code.group(1).strip()
+
+                        # 3. If valid JSON string found, parse and apply
+                        if json_str:
                             try:
-                                json_str = json_match.group(1).strip()
                                 data = json.loads(json_str)
                                 if data.get("action") == "add_override":
                                     overrides = data.get("overrides", [])
                                     if isinstance(overrides, list):
                                         save_state()
+                                        
+                                        # Append new overrides
+                                        added_count = 0
                                         for ov in overrides:
+                                            # Validate keys
                                             if all(k in ov for k in ("course_id", "component", "day", "time")):
                                                 st.session_state.overrides.append({
                                                     "course_id": ov["course_id"],
@@ -628,7 +649,14 @@ else:
                                                     "time": ov["time"],
                                                     "force": bool(ov.get("force", False)),
                                                 })
-                                        st.session_state.trigger_solve = True
-                                        st.rerun()
+                                                added_count += 1
+                                        
+                                        if added_count > 0:
+                                            st.toast(f"🔄 Applying {added_count} overrides...", icon="🤖")
+                                            st.session_state.trigger_solve = True
+                                            st.rerun()
+                                            
+                            except json.JSONDecodeError:
+                                st.error("Bot tried to change schedule but generated invalid JSON.")
                             except Exception as e:
-                                st.error(f"Failed to parse override JSON from assistant: {e}")
+                                st.error(f"Error applying override: {e}")

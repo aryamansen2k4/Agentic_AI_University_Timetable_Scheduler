@@ -43,6 +43,13 @@ TIME_SLOTS = [
 
     # ---- Slot 3 — 1.5 hr Lecture Option ----
     {
+        "slot_id": "MWF_1_LONG_L",
+        "days": ["Mon", "Wed", "Fri"],
+        "start": "08:00",
+        "end": "09:25",
+        "allowed_components": ["L"],
+    },
+    {
         "slot_id": "MWF_3_LONG_L",
         "days": ["Mon", "Wed", "Fri"],
         "start": "10:10",
