@@ -13,6 +13,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from models import Course, Room, Faculty
 from graph import build_timetable_graph
 from inspector import get_chat_response
+from timeslots import TIME_SLOTS
 
 
 # -----------------------------------------------------------
@@ -351,6 +352,7 @@ with st.sidebar:
         objs, flags = process_uploaded_files(uploaded_files)
         st.session_state.domain_objects = objs
         st.session_state.data_status = flags
+        st.session_state["TIME_SLOTS"] = TIME_SLOTS
         st.rerun()
 
     flags = st.session_state.data_status
@@ -375,45 +377,107 @@ with st.sidebar:
         if c2.button("↩️ Undo"):
             perform_undo()
 
-        with st.expander("🔒 Manual Override"):
-            courses = st.session_state.domain_objects.get("courses", [])
-            if courses:
-                ids = sorted({c.id for c in courses})
-                sel_id = st.selectbox("Course Code", ids)
+        # ==============================================================
+        # 📌 MANUAL OVERRIDE PANEL (Completely Redesigned)
+        # ==============================================================
 
-                comps = sorted({c.component for c in courses if c.id == sel_id})
-                sel_comp = st.selectbox("Component Type (L/T/P)", comps)
+        with st.expander("🔒 Manual Override — Lock a Course Component", expanded=True):
 
-                sel_day = st.selectbox("Day", ["Mon", "Tue", "Wed", "Thu", "Fri"])
-                sel_time = st.selectbox(
-                    "Time (match TIME_SLOTS)",
-                    [
-                        "09:00-10:00",
-                        "10:05-11:05",
-                        "11:10-12:10",
-                        "14:00-15:00",
-                        "15:05-16:05",
-                        "09:00-10:30",
-                        "10:35-12:05",
-                        "14:00-15:30",
-                        "15:35-17:05",
-                        "10:00-12:00",
-                        "14:00-16:00",
-                    ],
-                )
-                force = st.checkbox("Force override (clear conflicts)?", value=False)
+            st.markdown("""
+            Use this panel to *force* a specific course component (L/T/P) into a specific
+            official university slot. This override is applied **before** the solver runs.
 
-                if st.button("Apply Lock"):
-                    save_state()
-                    st.session_state.overrides.append({
-                        "course_id": sel_id,
-                        "component": sel_comp,
-                        "day": sel_day,
-                        "time": sel_time,
-                        "force": force,
-                    })
-                    st.session_state.trigger_solve = True
-                    st.rerun()
+            ✔ Only valid time-slots for the component (L/T/P) are shown  
+            ✔ Course + Component appear as a single selectable item  
+            ✔ Force override will clear conflicting classes in that slot  
+            """)
+
+            courses_available = st.session_state.domain_objects.get("courses", [])
+
+            
+            if not courses_available:
+                st.warning("⚠️ Load data first to use overrides.")
+            else:
+                all_courses = courses_available
+                TIME_SLOTS = st.session_state.get("TIME_SLOTS", [])
+                
+                if not TIME_SLOTS:
+                    st.error("❌ TIME_SLOTS not found in session_state. Make sure you set st.session_state['TIME_SLOTS'] when loading timeslots.")
+                else:
+
+
+                    # ----------------------------------------------------------
+                    # Build nice readable labels for selection
+                    # ----------------------------------------------------------
+                    course_options = []
+                    for c in all_courses:
+                        component_label = {"L": "Lecture", "T": "Tutorial", "P": "Practical"}[c.component]
+                        label = f"{c.id} • {component_label} ({c.component}) • Group: {c.group}"
+                        course_options.append((label, c))
+
+                    selected_label = st.selectbox(
+                        "Select Course Component",
+                        [lbl for lbl, obj in course_options],
+                        key="override_course_select"
+                    )
+
+                    selected_course = next(obj for lbl, obj in course_options if lbl == selected_label)
+                    comp = selected_course.component  # L/T/P
+
+                    # ----------------------------------------------------------
+                    # Day select
+                    # ----------------------------------------------------------
+                    selected_day = st.selectbox("Select Day", ["Mon", "Tue", "Wed", "Thu", "Fri"])
+
+                    # ----------------------------------------------------------
+                    # Slot selection filtered by component type
+                    # ----------------------------------------------------------
+                    valid_slots = [
+                        ts for ts in TIME_SLOTS
+                        if comp in ts.get("allowed_components", [])
+                    ]
+
+                    # Build readable options
+                    slot_options_ui = [
+                        f"{ts['start']}-{ts['end']}   |   Slot {ts['slot_id']}"
+                        for ts in valid_slots
+                    ]
+
+                    selected_slot_label = st.selectbox(
+                        "Select Time Slot (matches official TIME_SLOTS)",
+                        slot_options_ui,
+                        key="override_slot_select"
+                    )
+
+                    # Fetch the matching slot object
+                    selected_slot = next(
+                        ts for ts in valid_slots
+                        if f"{ts['start']}-{ts['end']}   |   Slot {ts['slot_id']}" == selected_slot_label
+                    )
+
+                    force_override = st.checkbox(
+                        "⚠️ Force override (clears conflicting classes in this slot family)",
+                        value=False
+                    )
+
+                    if st.button("Apply Override", type="primary"):
+                        ov = {
+                            "course_id": selected_course.id,
+                            "component": selected_course.component,
+                            "day": selected_day,
+                            "time": f"{selected_slot['start']}-{selected_slot['end']}",
+                            "force": force_override,
+                        }
+
+                        # Add to state
+                        if "overrides" not in st.session_state:
+                            st.session_state["overrides"] = []
+
+                        st.session_state["overrides"].append(ov)
+
+                        st.success(f"Override added for **{selected_course.id} ({selected_course.component})**.")
+                        st.json(ov)
+
 
         if st.session_state.overrides:
             st.subheader("Active Overrides")
