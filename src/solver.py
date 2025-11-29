@@ -1,8 +1,7 @@
-# solver.py
 """
 Greedy timetable solver with support for:
 - official strict TIME_SLOTS grid
-- multi-section components (LEC1, TUT1, PRAC2 → L/T/P via parser)
+- multi-section components (LEC1, TUT1, PRAC2 -> L/T/P via parser)
 - override + force override
 - partial success (for large real-world data)
 """
@@ -11,6 +10,7 @@ from dataclasses import dataclass
 from typing import List, Tuple, Dict, Any, Set
 from models import Course, Room, Faculty
 from timeslots import TIME_SLOTS   # strict grid
+import streamlit as st
 
 
 # ================================================================
@@ -44,28 +44,13 @@ class ScheduledClass:
 # ================================================================
 
 def canon_component(x: str) -> str:
-    """
-    Dataset patterns:
-    LEC1, LEC2   → L
-    TUT1, TUT2   → T
-    PRAC1, PRAC2 → P
-    (but usually we already pass L/T/P from the Excel parser)
-    """
     if not x:
         return ""
-
     s = str(x).strip().lower()
-
-    if s.startswith("lec"):
-        return "L"
-    if s.startswith("tut"):
-        return "T"
-    if s.startswith("prac") or s.startswith("lab"):
-        return "P"
-
-    if s[0] in ("l", "t", "p"):
-        return s[0].upper()
-
+    if s.startswith("lec"): return "L"
+    if s.startswith("tut"): return "T"
+    if s.startswith("prac") or s.startswith("lab"): return "P"
+    if s[0] in ("l", "t", "p"): return s[0].upper()
     return "L"
 
 
@@ -78,10 +63,20 @@ def time_label(ts: Dict[str, Any]) -> str:
 
 
 def slot_family(ts: Dict[str, Any]) -> str:
-    """MWF_4_L → MWF_4"""
+    """
+    Groups slots that share the same physical time block.
+    Example: MWF_1_L and MWF_1_LONG_L should clash.
+    Logic: Remove '_LONG' and remove suffix component.
+    """
     sid = ts["slot_id"]
+    # 1. Normalize LONG slots to standard slots for clash detection
+    sid = sid.replace("_LONG", "") 
+    
+    # 2. Remove component suffix (e.g., _L, _T, _LAB)
     parts = sid.rsplit("_", 1)
-    return parts[0] if len(parts) > 1 else sid
+    base = parts[0] if len(parts) > 1 else sid
+    
+    return base
 
 
 def iter_slots_for_component(comp: str):
@@ -89,16 +84,54 @@ def iter_slots_for_component(comp: str):
         if comp in ts.get("allowed_components", []):
             yield ts
 
+def parse_time_to_minutes(time_str: str) -> int:
+    """Converts '14:05' to 845 (minutes from midnight)."""
+    try:
+        h, m = map(int, time_str.split(":"))
+        return h * 60 + m
+    except:
+        return -1
 
 def find_slot_for_override(day: str, time_str: str, comp: str):
-    """Find matching slot for forced scheduling."""
+    """
+    Finds a slot using Fuzzy Matching (snaps to nearest official slot).
+    """
+    # 1. STRICT MATCH
+    def clean(s): return s.replace(" ", "").replace("0", "").replace(":", "")
+    target_clean = clean(time_str)
+
     for ts in TIME_SLOTS:
-        if comp not in ts.get("allowed_components", []):
-            continue
-        if day not in ts["days"]:
-            continue
-        if time_label(ts) == time_str:
-            return ts
+        if comp in ts.get("allowed_components", []) and day in ts["days"]:
+            if clean(time_label(ts)) == target_clean:
+                return ts
+
+    # 2. FUZZY MATCH (Snap to grid)
+    # If AI says "09:00" but slot is "09:05", we accept it.
+    try:
+        target_start_str = time_str.split("-")[0]
+        target_start_min = parse_time_to_minutes(target_start_str)
+        
+        best_slot = None
+        min_diff = 45 # Allow snapping if within 45 mins (generous)
+
+        for ts in TIME_SLOTS:
+            if comp not in ts.get("allowed_components", []) or day not in ts["days"]:
+                continue
+            
+            slot_start_min = parse_time_to_minutes(ts["start"])
+            diff = abs(slot_start_min - target_start_min)
+            
+            if diff < min_diff:
+                min_diff = diff
+                best_slot = ts
+
+        if best_slot:
+            # Silent auto-correct (or use st.toast if you want to see it)
+            return best_slot
+
+    except Exception:
+        pass
+
     return None
 
 
@@ -126,25 +159,24 @@ def _find_room_for_course(
     def free(r_id: str) -> bool:
         return (day, family, r_id) not in room_busy
 
-    # Preferred room
+    # 1. Preferred room
     if course.room_id:
         for r in rooms:
             if r.id == course.room_id and free(r.id):
                 return r.id
 
-    # Practicals → labs
+    # 2. Type matching (Labs vs Classrooms)
     if comp == "P":
         for r in rooms:
             if r.type.lower() == "lab" and free(r.id):
                 return r.id
-
-    # L/T → classrooms
-    if comp in ("L", "T"):
+    else:
+        # Lectures/Tutorials prefer non-labs
         for r in rooms:
             if r.type.lower() != "lab" and free(r.id):
                 return r.id
 
-    # Fallback: anything free
+    # 3. Fallback: Any free room (Desperate mode)
     for r in rooms:
         if free(r.id):
             return r.id
@@ -160,19 +192,24 @@ def _slot_free(
     room_busy: Set[Tuple[str, str, str]],
     faculty_busy: Dict[Tuple[str, str], str],
     group_busy: Dict[Tuple[str, str], str],
-) -> bool:
+) -> Tuple[bool, str]:
+    """Returns (IsFree, Reason)"""
+    
+    # Check Room
     if (day, family, room_id) in room_busy:
-        return False
+        return False, f"Room {room_id} busy"
 
     key = (day, family)
 
-    if key in faculty_busy and faculty_busy[key] == course.faculty_name:
-        return False
+    # Check Faculty
+    if key in faculty_busy and faculty_busy[key] == course.faculty_id:
+        return False, f"Faculty {course.faculty_name} busy"
 
+    # Check Group
     if key in group_busy and group_busy[key] == course.group:
-        return False
+        return False, f"Group {course.group} busy"
 
-    return True
+    return True, "OK"
 
 
 # ================================================================
@@ -187,9 +224,9 @@ def solve_timetable(
 ):
     schedule: List[ScheduledClass] = []
 
-    room_busy: Set[Tuple[str, str, str]] = set()
-    faculty_busy: Dict[Tuple[str, str], str] = {}
-    group_busy: Dict[Tuple[str, str], str] = {}
+    room_busy: Set[Tuple[str, str, str]] = set()     # (day, family, room_id)
+    faculty_busy: Dict[Tuple[str, str], str] = {}    # (day, family) -> faculty_id
+    group_busy: Dict[Tuple[str, str], str] = {}      # (day, family) -> group_id
 
     scheduled_keys = set()  # (course_id, comp)
 
@@ -208,23 +245,29 @@ def solve_timetable(
 
         ts = find_slot_for_override(day, time_str, comp)
         if ts is None:
+            st.error(f"❌ Override failed: Time slot {time_str} on {day} not found in official list.")
             continue
 
         fam = slot_family(ts)
         slot_key = (day, fam)
 
+        # Find the course object
         matching = [
             c for c in courses
             if c.id == c_id and canon_component(c.component) == comp
         ]
         if not matching:
+            st.warning(f"⚠️ Override ignored: Course {c_id} ({comp}) not found in data.")
             continue
 
+        # If FORCE: Clear conflicts
         if force:
             new_schedule: List[ScheduledClass] = []
             for sc in schedule:
                 fam2 = slot_family_for_label(sc.day, sc.time)
+                # If clash in same day & same slot family
                 if sc.day == day and fam2 == fam:
+                    # Remove from busy sets
                     room_busy = {(d, f, r) for (d, f, r) in room_busy if not (d == day and f == fam)}
                     faculty_busy.pop(slot_key, None)
                     group_busy.pop(slot_key, None)
@@ -233,16 +276,29 @@ def solve_timetable(
                     new_schedule.append(sc)
             schedule = new_schedule
 
+        # Place the overridden course
         for c in matching:
             key = (c.id, comp)
             if key in scheduled_keys and not force:
                 continue
 
             room_id = _find_room_for_course(c, rooms, day, fam, room_busy)
+            
+            # If no room found normally, and it's an override, TRY HARDER
+            if not room_id and rooms:
+                # Grab first room that isn't strictly busy for this family
+                for r in rooms:
+                    if (day, fam, r.id) not in room_busy:
+                        room_id = r.id
+                        break
+            
             if not room_id:
+                st.error(f"❌ Override failed for {c.id}: No rooms available at {day} {time_str}.")
                 continue
 
-            if not force and not _slot_free(day, fam, c, room_id, room_busy, faculty_busy, group_busy):
+            is_free, reason = _slot_free(day, fam, c, room_id, room_busy, faculty_busy, group_busy)
+            if not force and not is_free:
+                st.toast(f"⚠️ Override skipped for {c.id}: {reason}. Use 'Force' to overwrite.", icon="🚫")
                 continue
 
             sc = ScheduledClass(
@@ -258,8 +314,10 @@ def solve_timetable(
             scheduled_keys.add(key)
 
             room_busy.add((day, fam, room_id))
-            faculty_busy[slot_key] = c.faculty_name
+            faculty_busy[slot_key] = c.faculty_id
             group_busy[slot_key] = c.group
+            
+            st.toast(f"✅ Override applied: {c.id} at {day} {time_str}", icon="🔒")
 
     # ------------------------------------------------------------
     # 2. Greedy scheduling for remaining courses
@@ -281,7 +339,8 @@ def solve_timetable(
                 if not room_id:
                     continue
 
-                if not _slot_free(day, fam, c, room_id, room_busy, faculty_busy, group_busy):
+                is_free, _ = _slot_free(day, fam, c, room_id, room_busy, faculty_busy, group_busy)
+                if not is_free:
                     continue
 
                 sc = ScheduledClass(
@@ -297,7 +356,7 @@ def solve_timetable(
                 scheduled_keys.add(key)
 
                 room_busy.add((day, fam, room_id))
-                faculty_busy[slot_key] = c.faculty_name
+                faculty_busy[slot_key] = c.faculty_id
                 group_busy[slot_key] = c.group
                 placed = True
                 break
@@ -328,4 +387,4 @@ def solve_timetable(
         msg = f"PARTIAL schedule: placed {placed}/{total}. Missing: {preview}"
         return True, schedule, msg
 
-    return True, schedule, "ALL courses placed successfully in strict slots."
+    return True, schedule, "ALL courses placed successfully."
