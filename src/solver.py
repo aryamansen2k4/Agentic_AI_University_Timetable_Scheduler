@@ -1,171 +1,331 @@
-from ortools.sat.python import cp_model
-from config import (
-    DAYS, TIME_MAP, BLOCKED_SLOTS, get_slot_from_time,
-    TOTAL_SLOTS, RANGE_1H, RANGE_1_5H, SLOT_CONFLICTS
-)
+# solver.py
+"""
+Greedy timetable solver with support for:
+- official strict TIME_SLOTS grid
+- multi-section components (LEC1, TUT1, PRAC2 → L/T/P via parser)
+- override + force override
+- partial success (for large real-world data)
+"""
 
-def solve_timetable(courses, rooms, faculty, groups, overrides=None):
-    if overrides is None: overrides = []
-    
-    model = cp_model.CpModel()
-    
-    # --- 1. SETUP VARIABLES ---
-    # X[(course_idx, day, slot, room_idx)] = boolean
-    X = {}
-    
-    for c_idx, c in enumerate(courses):
+from dataclasses import dataclass
+from typing import List, Tuple, Dict, Any, Set
+from models import Course, Room, Faculty
+from timeslots import TIME_SLOTS   # strict grid
+
+
+# ================================================================
+# Scheduled class
+# ================================================================
+
+@dataclass
+class ScheduledClass:
+    day: str
+    time: str       # "HH:MM-HH:MM"
+    course: str
+    component: str  # L/T/P
+    room: str
+    faculty: str
+    group: str
+
+    def as_dict(self):
+        return {
+            "day": self.day,
+            "time": self.time,
+            "course": self.course,
+            "component": self.component,
+            "room": self.room,
+            "faculty": self.faculty,
+            "group": self.group,
+        }
+
+
+# ================================================================
+# Canonical component
+# ================================================================
+
+def canon_component(x: str) -> str:
+    """
+    Dataset patterns:
+    LEC1, LEC2   → L
+    TUT1, TUT2   → T
+    PRAC1, PRAC2 → P
+    (but usually we already pass L/T/P from the Excel parser)
+    """
+    if not x:
+        return ""
+
+    s = str(x).strip().lower()
+
+    if s.startswith("lec"):
+        return "L"
+    if s.startswith("tut"):
+        return "T"
+    if s.startswith("prac") or s.startswith("lab"):
+        return "P"
+
+    if s[0] in ("l", "t", "p"):
+        return s[0].upper()
+
+    return "L"
+
+
+# ================================================================
+# Slot utilities
+# ================================================================
+
+def time_label(ts: Dict[str, Any]) -> str:
+    return f"{ts['start']}-{ts['end']}"
+
+
+def slot_family(ts: Dict[str, Any]) -> str:
+    """MWF_4_L → MWF_4"""
+    sid = ts["slot_id"]
+    parts = sid.rsplit("_", 1)
+    return parts[0] if len(parts) > 1 else sid
+
+
+def iter_slots_for_component(comp: str):
+    for ts in TIME_SLOTS:
+        if comp in ts.get("allowed_components", []):
+            yield ts
+
+
+def find_slot_for_override(day: str, time_str: str, comp: str):
+    """Find matching slot for forced scheduling."""
+    for ts in TIME_SLOTS:
+        if comp not in ts.get("allowed_components", []):
+            continue
+        if day not in ts["days"]:
+            continue
+        if time_label(ts) == time_str:
+            return ts
+    return None
+
+
+def slot_family_for_label(day: str, label: str) -> str:
+    """Reverse map (day, 'HH:MM-HH:MM') to slot family."""
+    for ts in TIME_SLOTS:
+        if day in ts["days"] and time_label(ts) == label:
+            return slot_family(ts)
+    return label
+
+
+# ================================================================
+# Room selection & clash checking
+# ================================================================
+
+def _find_room_for_course(
+    course: Course,
+    rooms: List[Room],
+    day: str,
+    family: str,
+    room_busy: Set[Tuple[str, str, str]],
+) -> str:
+    comp = canon_component(course.component)
+
+    def free(r_id: str) -> bool:
+        return (day, family, r_id) not in room_busy
+
+    # Preferred room
+    if course.room_id:
         for r in rooms:
-            # OPTIMIZATION: PRUNING
-            # 1. Capacity Check: Don't schedule big classes in small rooms
-            if c.capacity_needed > 0 and r.capacity < c.capacity_needed:
-                continue
-            
-            # 2. Room Type Check
-            if c.component == "P" and r.type.lower() != "lab": continue
-            if c.component == "L" and r.type.lower() == "lab": continue
-            
-            for d in DAYS:
-                # Valid slots based on hours
-                if c.hours == 1.5:
-                    valid_slots = RANGE_1_5H
-                else:
-                    valid_slots = RANGE_1H
+            if r.id == course.room_id and free(r.id):
+                return r.id
 
-                for s in valid_slots:
-                    if (d, s) in BLOCKED_SLOTS: continue
-                    X[(c_idx, d, s, r.id)] = model.NewBoolVar(f"X_{c.id}_{d}_{s}_{r.id}")
+    # Practicals → labs
+    if comp == "P":
+        for r in rooms:
+            if r.type.lower() == "lab" and free(r.id):
+                return r.id
 
-    # --- 2. OVERRIDES ---
+    # L/T → classrooms
+    if comp in ("L", "T"):
+        for r in rooms:
+            if r.type.lower() != "lab" and free(r.id):
+                return r.id
+
+    # Fallback: anything free
+    for r in rooms:
+        if free(r.id):
+            return r.id
+
+    return ""
+
+
+def _slot_free(
+    day: str,
+    family: str,
+    course: Course,
+    room_id: str,
+    room_busy: Set[Tuple[str, str, str]],
+    faculty_busy: Dict[Tuple[str, str], str],
+    group_busy: Dict[Tuple[str, str], str],
+) -> bool:
+    if (day, family, room_id) in room_busy:
+        return False
+
+    key = (day, family)
+
+    if key in faculty_busy and faculty_busy[key] == course.faculty_name:
+        return False
+
+    if key in group_busy and group_busy[key] == course.group:
+        return False
+
+    return True
+
+
+# ================================================================
+# Main solver
+# ================================================================
+
+def solve_timetable(
+    courses: List[Course],
+    rooms: List[Room],
+    faculty: List[Faculty],
+    overrides: List[Dict[str, Any]],
+):
+    schedule: List[ScheduledClass] = []
+
+    room_busy: Set[Tuple[str, str, str]] = set()
+    faculty_busy: Dict[Tuple[str, str], str] = {}
+    group_busy: Dict[Tuple[str, str], str] = {}
+
+    scheduled_keys = set()  # (course_id, comp)
+
+    # ------------------------------------------------------------
+    # 1. Apply overrides
+    # ------------------------------------------------------------
     for ov in overrides:
-        target_slot = get_slot_from_time(ov['day'], ov['time'])
-        if target_slot is None: continue
+        c_id = ov.get("course_id")
+        comp = canon_component(ov.get("component", ""))
+        day = ov.get("day")
+        time_str = ov.get("time")
+        force = bool(ov.get("force", False))
 
-        target_c_idx = next((i for i, c in enumerate(courses) 
-                             if c.id == ov['course_id'] and c.component == ov['component']), None)
-        
-        if target_c_idx is not None:
-            relevant_vars = [X[k] for k in X 
-                             if k[0] == target_c_idx 
-                             and k[1] == ov['day'] 
-                             and k[2] == target_slot]
-            if relevant_vars:
-                model.Add(sum(relevant_vars) == 1)
+        if not (c_id and comp and day and time_str):
+            continue
 
-    # --- 3. HARD CONSTRAINTS ---
+        ts = find_slot_for_override(day, time_str, comp)
+        if ts is None:
+            continue
 
-    # A. Resource Usage
-    for d in DAYS:
-        for s in range(TOTAL_SLOTS):
-            # No room overlap
-            for r in rooms:
-                model.Add(sum(X[k] for k in X if k[1]==d and k[2]==s and k[3]==r.id) <= 1)
-            # No faculty overlap
-            for f in faculty:
-                model.Add(sum(X[k] for k in X if k[1]==d and k[2]==s and courses[k[0]].faculty == f.id) <= 1)
-            # No student group overlap
-            for g in groups:
-                model.Add(sum(X[k] for k in X if k[1]==d and k[2]==s and courses[k[0]].group == g) <= 1)
+        fam = slot_family(ts)
+        slot_key = (day, fam)
 
-        # Cross-Slot Overlaps (Mixing 1h and 1.5h)
-        for (s1, s2) in SLOT_CONFLICTS:
-            for r in rooms:
-                u1 = sum(X[k] for k in X if k[1]==d and k[2]==s1 and k[3]==r.id)
-                u2 = sum(X[k] for k in X if k[1]==d and k[2]==s2 and k[3]==r.id)
-                model.Add(u1 + u2 <= 1)
-            
-            for f in faculty:
-                u1 = sum(X[k] for k in X if k[1]==d and k[2]==s1 and courses[k[0]].faculty == f.id)
-                u2 = sum(X[k] for k in X if k[1]==d and k[2]==s2 and courses[k[0]].faculty == f.id)
-                model.Add(u1 + u2 <= 1)
+        matching = [
+            c for c in courses
+            if c.id == c_id and canon_component(c.component) == comp
+        ]
+        if not matching:
+            continue
 
-            for g in groups:
-                u1 = sum(X[k] for k in X if k[1]==d and k[2]==s1 and courses[k[0]].group == g)
-                u2 = sum(X[k] for k in X if k[1]==d and k[2]==s2 and courses[k[0]].group == g)
-                model.Add(u1 + u2 <= 1)
+        if force:
+            new_schedule: List[ScheduledClass] = []
+            for sc in schedule:
+                fam2 = slot_family_for_label(sc.day, sc.time)
+                if sc.day == day and fam2 == fam:
+                    room_busy = {(d, f, r) for (d, f, r) in room_busy if not (d == day and f == fam)}
+                    faculty_busy.pop(slot_key, None)
+                    group_busy.pop(slot_key, None)
+                    scheduled_keys.discard((sc.course, sc.component))
+                else:
+                    new_schedule.append(sc)
+            schedule = new_schedule
 
-    # B. Pattern Enforcement
-    for c_idx, c in enumerate(courses):
-        if c.component == "L" and c.hours == 3.0:
-            for day in ["Mon", "Wed", "Fri"]:
-                 model.Add(sum(X[k] for k in X if k[0]==c_idx and k[1]==day and k[2] in RANGE_1H) == 1)
-            model.Add(sum(X[k] for k in X if k[0]==c_idx and k[1] in ["Tue", "Thu"]) == 0)
-            
-            # Symmetry
-            for s in RANGE_1H:
-                mon = sum(X[k] for k in X if k[0]==c_idx and k[1]=="Mon" and k[2]==s)
-                wed = sum(X[k] for k in X if k[0]==c_idx and k[1]=="Wed" and k[2]==s)
-                fri = sum(X[k] for k in X if k[0]==c_idx and k[1]=="Fri" and k[2]==s)
-                model.Add(mon == wed)
-                model.Add(mon == fri)
+        for c in matching:
+            key = (c.id, comp)
+            if key in scheduled_keys and not force:
+                continue
 
-        elif c.component == "L" and c.hours == 1.5:
-            for day in ["Tue", "Thu"]:
-                 model.Add(sum(X[k] for k in X if k[0]==c_idx and k[1]==day and k[2] in RANGE_1_5H) == 1)
-            model.Add(sum(X[k] for k in X if k[0]==c_idx and k[1] in ["Mon", "Wed", "Fri"]) == 0)
-            
-            # Symmetry
-            for s in RANGE_1_5H:
-                tue = sum(X[k] for k in X if k[0]==c_idx and k[1]=="Tue" and k[2]==s)
-                thu = sum(X[k] for k in X if k[0]==c_idx and k[1]=="Thu" and k[2]==s)
-                model.Add(tue == thu)
+            room_id = _find_room_for_course(c, rooms, day, fam, room_busy)
+            if not room_id:
+                continue
 
-        elif c.component == "P":
-            model.Add(sum(X[k] for k in X if k[0]==c_idx) == 1)
+            if not force and not _slot_free(day, fam, c, room_id, room_busy, faculty_busy, group_busy):
+                continue
 
-    # C. Faculty (Max Days & Back-to-Back)
-    for f in faculty:
-        days_worked = []
-        for d in DAYS:
-            is_working = model.NewBoolVar(f"work_{f.id}_{d}")
-            load = sum(X[k] for k in X if courses[k[0]].faculty == f.id and k[1] == d)
-            model.Add(load > 0).OnlyEnforceIf(is_working)
-            model.Add(load == 0).OnlyEnforceIf(is_working.Not())
-            days_worked.append(is_working)
-        model.Add(sum(days_worked) <= f.max_days)
+            sc = ScheduledClass(
+                day=day,
+                time=time_label(ts),
+                course=c.id,
+                component=comp,
+                room=room_id,
+                faculty=c.faculty_name,
+                group=c.group,
+            )
+            schedule.append(sc)
+            scheduled_keys.add(key)
 
-        if not f.allow_back_to_back:
-            for d in DAYS:
-                for s in range(len(RANGE_1H) - 1):
-                    s1 = sum(X[k] for k in X if k[1]==d and k[2]==s and courses[k[0]].faculty == f.id)
-                    s2 = sum(X[k] for k in X if k[1]==d and k[2]==s+1 and courses[k[0]].faculty == f.id)
-                    model.Add(s1 + s2 <= 1)
+            room_busy.add((day, fam, room_id))
+            faculty_busy[slot_key] = c.faculty_name
+            group_busy[slot_key] = c.group
 
-    # --- 4. SOFT CONSTRAINTS ---
-    objectives = []
-    for k, var in X.items():
-        c = courses[k[0]]
-        if not c.is_core and (k[2] == 0 or k[2] == 8):
-            objectives.append(-10 * var)
-        if k[1] == "Fri" and (k[2] == 7 or k[2] == 13):
-            objectives.append(-5 * var)
+    # ------------------------------------------------------------
+    # 2. Greedy scheduling for remaining courses
+    # ------------------------------------------------------------
+    for c in courses:
+        comp = canon_component(c.component)
+        key = (c.id, comp)
+        if key in scheduled_keys:
+            continue
 
-    model.Maximize(sum(objectives))
+        placed = False
+        for ts in iter_slots_for_component(comp):
+            if placed:
+                break
+            fam = slot_family(ts)
+            for day in ts["days"]:
+                slot_key = (day, fam)
+                room_id = _find_room_for_course(c, rooms, day, fam, room_busy)
+                if not room_id:
+                    continue
 
-    # --- 5. SOLVE ---
-    solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = 20 # Increased slightly for bigger datasets
-    status = solver.Solve(model)
+                if not _slot_free(day, fam, c, room_id, room_busy, faculty_busy, group_busy):
+                    continue
 
-    if status not in [cp_model.OPTIMAL, cp_model.FEASIBLE]:
-        return None
+                sc = ScheduledClass(
+                    day=day,
+                    time=time_label(ts),
+                    course=c.id,
+                    component=comp,
+                    room=room_id,
+                    faculty=c.faculty_name,
+                    group=c.group,
+                )
+                schedule.append(sc)
+                scheduled_keys.add(key)
 
-    # --- 6. OUTPUT ---
-    result = []
-    for k, var in X.items():
-        if solver.Value(var) == 1:
-            c_idx, day, slot, r_id = k
-            time_str = TIME_MAP[day][slot]
-            result.append({
-                "course": courses[c_idx].id,
-                "component": courses[c_idx].component,
-                "day": day,
-                "time": time_str,
-                "slot_index": slot,
-                "room": r_id,
-                "faculty": courses[c_idx].faculty,
-                "group": courses[c_idx].group
-            })
-    
-    day_order = {"Mon":1, "Tue":2, "Wed":3, "Thu":4, "Fri":5}
-    result.sort(key=lambda x: (day_order[x['day']], x['time']))
-    return result
+                room_busy.add((day, fam, room_id))
+                faculty_busy[slot_key] = c.faculty_name
+                group_busy[slot_key] = c.group
+                placed = True
+                break
+
+    # ------------------------------------------------------------
+    # 3. Full vs partial success
+    # ------------------------------------------------------------
+    missing = []
+    for c in courses:
+        comp = canon_component(c.component)
+        if (c.id, comp) not in scheduled_keys:
+            missing.append(f"{c.id} ({comp})")
+
+    placed = len(schedule)
+    total = len(courses)
+
+    if placed == 0:
+        msg = (
+            "Solver could not place ANY course in the strict university timeslots. "
+            "Check TIME_SLOTS or relax constraints."
+        )
+        return False, [], msg
+
+    if missing:
+        preview = ", ".join(missing[:25])
+        if len(missing) > 25:
+            preview += f", ... (+{len(missing)-25} more)"
+        msg = f"PARTIAL schedule: placed {placed}/{total}. Missing: {preview}"
+        return True, schedule, msg
+
+    return True, schedule, "ALL courses placed successfully in strict slots."
