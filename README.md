@@ -34,3 +34,10 @@ I plan to excecute these steps to complete my project.:
   - An **Inspector Agent** that summarizes schedule quality and finds issues.
   - A **Repair Agent** that applies overrides when the user issues commands. (```graph.py``` and ```inspector.py```)
 
+4) **[TODO] Step 5 – Streamlit Dashboard**  
+  Build a UI with:
+  - file upload,
+  - live schedule display,
+  - chat panel for agent interaction,
+  - override controls,
+  - download/export options.
