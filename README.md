@@ -2,15 +2,38 @@
 This project automates the complex task of university course scheduling.
 
 **A Human-in-the-Loop Optimization System**
-Combines Google OR-Tools for mathematical constraint solving with a Generative AI Agent (OpenAI GPT) for interactive schedule repair and analysis.
+Combines Google OR-Tools for mathematical constraint solving with a Generative AI Agent for interactive schedule repair and analysis.
 
 ---
 
 ## Overview
 
-This project is an intelligent, interactive system designed to automate the complex task of university course scheduling. It combines deterministic mathematical optimization with a Generative AI agent to create a "human-in-the-loop" workflow.
+TThis project implements an **AI-powered, fully interactive university timetable scheduler** that combines:
 
-Unlike traditional "black-box" solvers, this system features an Agentic AI co-pilot. The system uses Google OR-Tools to solve hard constraints (room capacity, faculty availability, time clashes) and generate an initial valid schedule. It then employs an LLM-based "Inspector Agent" (powered by OpenAI GPT via Groq) to analyze the schedule for soft constraint violations. Crucially, the user can interact with the schedule using natural language (e.g., "Move CS102 to Tuesday morning"), prompting the AI to output structured actions that trigger the solver to re-calculate the schedule in real-time.
+1) **Symbolic optimization** (Google OR-Tools)
+2) **Agentic reasoning** (LLM running via LangGraph)
+3) **Human-in-the-loop repair workflows**
+4) **Strict university timeslot rules** extracted from the official PDF grid
+5_ **Conflict-free scheduling** for rooms, faculty, and student groups
+6) **Override + forced override** (admin-style manual slot assignment)
+7) **Interactive Streamlit dashboard**
+
+The system first loads a semester-long **master sheet** (Excel/CSV) containing all courses, components (L/T/P), faculty, groups, and requested hours.  
+Then:
+
+1. A **strict deterministic solver** generates a valid baseline timetable using official university slots only.  
+2. An **Inspector Agent (LLM)** analyzes the timetable and identifies issues such as:
+   - uneven day-wise distribution,
+   - overloads,
+   - early-morning clusters,
+   - room bottlenecks,
+   - components assigned incorrectly.
+3. A **Repair Agent** applies changes requested by the user such as:
+   - *“Move BIO101 PRAC1 to Tuesday 11:00, even if occupied.”*
+   - *“Swap these two lectures.”*
+   - *“Force override this slot.”*
+
+This creates a seamless **AI-assisted scheduling pipeline** aligned with real academic constraints.
 
 ## Reason for picking up this project
 This project is directly aligned with the course’s learning objectives on integration of LangGraph and LangChain:
