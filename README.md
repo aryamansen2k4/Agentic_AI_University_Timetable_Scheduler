@@ -13,15 +13,30 @@ This project is an intelligent, interactive system designed to automate the comp
 Unlike traditional "black-box" solvers, this system features an Agentic AI co-pilot. The system uses Google OR-Tools to solve hard constraints (room capacity, faculty availability, time clashes) and generate an initial valid schedule. It then employs an LLM-based "Inspector Agent" (powered by OpenAI GPT via Groq) to analyze the schedule for soft constraint violations. Crucially, the user can interact with the schedule using natural language (e.g., "Move CS102 to Tuesday morning"), prompting the AI to output structured actions that trigger the solver to re-calculate the schedule in real-time.
 
 ## Reason for picking up this project
-This project was chosen to demonstrate the powerful integration of LangGraph and LangChain. It aligns with the course content by implementing advanced concepts such as:
+This project is directly aligned with the course’s learning objectives on integration of LangGraph and LangChain:
 
-1) Constraint Satisfaction Problems (CSP): Implementing hard constraints (no double-booking) and soft constraints (optimizing for preferred times) to solve NP-hard scheduling problems.
 
-2) Agentic AI & Tool Use: Moving beyond simple chatbots to agents that can output structured JSON commands to control underlying application logic.
+### **Agentic AI Workflows**: 
+Building multi-step reasoning pipelines where the LLM:
+1) analyzes structured input,
+2) produces actionable insights,
+3) assists in human-guided decision making.
 
-3) Human-in-the-Loop Systems: Designing an architecture where the AI proposes solutions and the human supervisor provides feedback or overrides via natural language.
+### **Integrating LLMs with Tooling**: 
+The project demonstrates the use of:
+1) LangChain + LangGraph,
+2) External tools (Hybrid solver),
+3) State-machine graph execution,
+4) Streaming LLM interactions.
 
-4) State Management: Handling complex session states (overrides, chat history, schedule data) within a reactive web application.
+### **Real-world Constraint Design**"
+Timetable scheduling contains the following constraints:
+1) faculty availability,
+2) classroom capacity,
+3) slot exclusivity,
+4) group clash resolution,
+5) override vs. forced override logic,
+6) strict slot families (MWF / TTH based on the university's official timetable).
 
 ## Plan
 I plan to excecute these steps to complete my project.:
