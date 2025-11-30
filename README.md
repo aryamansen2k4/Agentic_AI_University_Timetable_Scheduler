@@ -8,8 +8,7 @@ Combines Google OR-Tools for mathematical constraint solving with a Generative A
 
 ## Overview
 Our university always had issues in coming up with a fixed timetable for a semester. Not only are the time slots of courses not aligning with the majority of the student body,
-changing the timetable alone is tedious task faced by the short staffed academic office. Through the learnings in this course, I planned to use this project as an opportunity to
-potentially solve this timetabling issues with the help of Agentic Models.
+changing the timetable alone is a tedious task faced by the short staffed academic office. Through the learnings in this course, I planned to use this project as an opportunity to potentially solve this timetabling issues with the help of Agentic Models.
 
 TThis project implements an **AI-powered, fully interactive university timetable scheduler** that combines:
 
@@ -84,4 +83,25 @@ I plan to excecute these steps to complete my project.:
 
 5) **[DONE] Step 6 – Testing With Real Data**: Use large real-world semester sheets to test performance, conflict accuracy, and the override workflow.
 
-Added ```images``` and ```exported_tables``` to show the working of program as well as provide the output.
+Added ```images``` and ```exported_tables``` folders to show the working of program as well as provide the output.
+
+## Conclusion
+I planned to achieve the following goals:
+
+- Parse messy real-world academic data reliably.  
+- Enforce a strict, real university timetable slot grid.  
+- Build a hybrid deterministic + LLM agentic scheduling framework.  
+- Provide a user-friendly dashboard with real-time AI analysis.  
+- Support override and forced override logic like an admin system.
+
+I believe I have **successfully achieved** these goals:
+
+    - The solver schedules most courses into official slots, resolving clashes accurately.  
+    - The Inspector Agent produces clear, structured analyses.  
+    - The Repair Agent handles user commands correctly.  
+    - The UI demonstrates a realistic, interactive scheduling workflow.
+
+Remaining limitations include:
+    - Heavy requests to large LLMs can exceed model token limits (now mitigated by switching to GPT-4o-mini).  
+    - Some extreme cases of overlapping constraints require manual forced override.
+    - Instances of AI "hallucinations" during overriding which can be fixed with better AI models

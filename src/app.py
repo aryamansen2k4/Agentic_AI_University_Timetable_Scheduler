@@ -19,7 +19,7 @@ from timeslots import TIME_SLOTS
 # -----------------------------------------------------------
 # Streamlit Config
 # -----------------------------------------------------------
-st.set_page_config(layout="wide", page_title="AI Timetable Agent")
+st.set_page_config(layout="wide", page_title="AI Timetable Agent") # type: ignore
 
 st.markdown("""
 <style>

@@ -67,7 +67,7 @@ def inspect_schedule(
     # Use a strong model for JSON instruction following
     llm = ChatGroq(
         groq_api_key=api_key,   # type: ignore
-        model="openai/gpt-oss-20b", # Reliable model for logic
+        model="meta-llama/llama-4-maverick-17b-128e-instruct", # Reliable model for logic
         temperature=0.1,
     )
 
@@ -170,7 +170,7 @@ def get_chat_response(
 
     llm = ChatGroq(
         groq_api_key=api_key,   # type: ignore
-        model="openai/gpt-oss-20b",
+        model="meta-llama/llama-4-maverick-17b-128e-instruct",
         temperature=0.1,
     )
 

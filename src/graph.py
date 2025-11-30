@@ -149,7 +149,7 @@ def build_timetable_graph():
     graph.add_node("end", end_node)  # type: ignore
 
     # fixed sequential edges
-    graph.set_entry_point("solve")
+    graph.set_entry_point("solve") # type: ignore
     graph.add_edge("solve", "inspect")
     graph.add_edge("inspect", "apply_overrides")
 
