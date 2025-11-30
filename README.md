@@ -102,6 +102,7 @@ I believe I have **successfully achieved** these goals:
     - The UI demonstrates a realistic, interactive scheduling workflow.
 
 Remaining limitations include:
-    - Heavy requests to large LLMs can exceed model token limits (now mitigated by switching to GPT-4o-mini).  
+
+    - Heavy requests to large LLMs can exceed model token limits.  
     - Some extreme cases of overlapping constraints require manual forced override.
     - Instances of AI "hallucinations" during overriding which can be fixed with better AI models
