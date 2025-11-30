@@ -56,4 +56,4 @@ I plan to excecute these steps to complete my project.:
   - override controls,
   - download/export options.
 
-5) **[TODO] Step 6 – Testing With Real Data**: Use large real-world semester sheets to test performance, conflict accuracy, and the override workflow.
+5) **[DONE] Step 6 – Testing With Real Data**: Use large real-world semester sheets to test performance, conflict accuracy, and the override workflow.
