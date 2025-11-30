@@ -63,7 +63,7 @@ TIME_SLOTS = [
         "days": ["Mon", "Wed", "Fri"],
         "start": "11:45",
         "end": "12:40",
-        "allowed_components": [],    # BLOCKED
+        "allowed_components": ["L"],    # BLOCKED
     },
 
     # ---- Afternoon Lectures / Labs ----
