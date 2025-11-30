@@ -63,6 +63,9 @@ Timetable scheduling contains the following constraints:
 5) override vs. forced override logic,
 6) strict slot families (MWF / TTH based on the university's official timetable).
 
+## Video Summary Link
+> **([Drive Link for Video](https://drive.google.com/drive/folders/1HYUswl-fOarJ26HAtSB4NBmSM4q8My16?usp=sharing))**  
+
 ## Plan
 I plan to excecute these steps to complete my project.:
 
