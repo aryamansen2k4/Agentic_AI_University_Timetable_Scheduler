@@ -1,0 +1,59 @@
+﻿,day,time,course,component,room,faculty,group
+11,Fri,08:00-08:55,BIO new code,L,Room_1,Colin Christopher Jamora,BIO1YR
+18,Fri,08:00-08:55,BIO207,L,Room_2,Jugal Kishore Das,BIO2YR
+24,Fri,08:00-08:55,BIO309,L,Room_3,Anindita  Chakrabarty,BIO3YR
+34,Fri,08:00-08:55,CHY122,L,Room_4,Santanu  Ghosh,CHY1YR
+40,Fri,08:00-08:55,CHY216,L,Room_5,Kshatresh Dutta Dubey,CHY2YR
+51,Fri,08:00-08:55,CHY352/CHY4052,L,Room_6,Animesh  Samanta,CHY3YR
+28,Fri,09:05-10:00,BIO328,L,Room_1,Richa  Priyadarshini,BIO3YR
+19,Fri,13:00-14:55,BIO207,P,Room_1,Jugal Kishore Das,BIO2YR
+38,Fri,13:00-14:55,CHY144,P,Room_2,Siddiqui Md Mujahuddin,CHY1YR
+48,Fri,13:00-14:55,CHY242,P,Room_3,Debdas  Ray,CHY2YR
+3,Mon,08:00-08:55,BIO101/new code,L,Room_1,Ashutosh  Singh,BIO1YR
+7,Mon,08:00-08:55,BIO113/new code,L,Room_2,Sri Krishna Jayadev Magani,CHY1YR
+9,Mon,08:00-08:55,BIO114/new code,L,Room_3,Neelesh Naresh Dahanukar,BIO1YR
+14,Mon,08:00-08:55,BIO205,L,Room_4,Koyeli  Mapa,BIO2YR
+21,Mon,08:00-08:55,BIO305,L,Room_5,Rajan  Vyas,BIO3YR
+30,Mon,08:00-08:55,CHY104,L,Room_6,Naiwrit  Karmodak,CHY1YR
+39,Mon,08:00-08:55,CHY212,L,Room_7,Biswajit  Guchhait,CHY2YR
+45,Mon,08:00-08:55,CHY226,L,Room_8,Bidyut  Sarkar,CHY2YR CHY3YR
+47,Mon,08:00-08:55,CHY242,L,Room_9,Debdas  Ray,CHY2YR
+49,Mon,08:00-08:55,CHY322,L,Room_10,Subhabrata  Sen,CHY3YR
+20,Mon,09:05-10:00,BIO208,L,Room_1,Ashutosh  Singh,BIO2YR
+25,Mon,09:05-10:00,BIO322,L,Room_2,Prasun Kumar Roy,BIO3YR
+37,Mon,09:05-10:00,CHY144,L,Room_3,Basab Bijayi Dhar,CHY1YR
+13,Mon,13:00-14:55,BIO new code,P,Room_4,Naga Suresh Veerapu,BIO1YR
+4,Mon,13:00-14:55,BIO101/new code,P,Room_1,Ashutosh  Singh,BIO11
+6,Mon,13:00-14:55,BIO107/new code,P,Room_2,Rohini  Garg,BIO1YR
+8,Mon,13:00-14:55,BIO113/new code,P,Room_3,Sri Krishna Jayadev Magani,CHY1YR
+15,Mon,13:00-14:55,BIO205,P,Room_5,Koyeli  Mapa,BIO2YR
+22,Mon,13:00-14:55,BIO305,P,Room_6,Rajan  Vyas,BIO3YR
+29,Mon,13:00-14:55,BIO403,P,Room_7,Neelesh Naresh Dahanukar,BIO4YR
+33,Mon,13:00-14:55,CHY114,P,Room_8,Kshatresh Dutta Dubey,CHY1YR
+44,Mon,13:00-14:55,CHY222,P,Room_9,Ajoy  Kapat,CHY2YR
+53,Mon,13:00-14:55,CHY498,P,Room_10,Tatini  Rakshit,CHY4YR
+1,Mon,15:05-17:00,BIO208,P,Room_1,Ashutosh  Singh,BIO21
+2,Mon,15:05-17:00,BIO208,P,Room_2,Ashutosh  Singh,BIO22
+10,Mon,17:10-18:05,BIO114/new code,T,Room_1,Neelesh Naresh Dahanukar,BIO1YR
+31,Mon,17:10-18:05,CHY104,T,Room_2,Naiwrit  Karmodak,CHY1YR
+43,Mon,17:10-18:05,CHY222,T,Room_3,Ajoy  Kapat,CHY2YR
+46,Mon,17:10-18:05,CHY226,T,Room_4,Bidyut  Sarkar,CHY2YR CHY3YR
+5,Wed,08:00-08:55,BIO107/new code,L,Room_1,Rohini  Garg,BIO1YR
+16,Wed,08:00-08:55,BIO206,L,Room_2,Rudra Nayan Das,BIO2YR
+23,Wed,08:00-08:55,BIO307,L,Room_3,Colin Christopher Jamora,BIO3YR
+32,Wed,08:00-08:55,CHY114,L,Room_4,Kshatresh Dutta Dubey,CHY1YR
+42,Wed,08:00-08:55,CHY222,L,Room_5,Ajoy  Kapat,CHY2YR
+50,Wed,08:00-08:55,CHY342,L,Room_6,Vijay  Kumar,CHY3YR
+52,Wed,08:00-08:55,CHY456,L,Room_7,Tatini  Rakshit,CHY3YR CHY4YR
+54,Wed,08:00-08:55,CHY501/CHY5001,L,Room_8,Subhabrata  Sen,CHY4YR
+55,Wed,08:00-08:55,CHY522/CHY5022,L,Room_9,Nidhi  Malhotra,CHY3YR
+57,Wed,08:00-08:55,CHY544/CHY5044,L,Room_10,Vijay  Kumar,CHY4YR
+26,Wed,09:05-10:00,BIO326,L,Room_1,Puli Chandramouli Reddy,BIO3YR
+0,Wed,10:10-11:05,BIO329,L,Room_1,Sanjeev Anant Galande,BIO3YR
+17,Wed,13:00-14:55,BIO206,P,Room_1,Rudra Nayan Das,BIO2YR
+27,Wed,13:00-14:55,BIO326,P,Room_2,Puli Chandramouli Reddy,BIO3YR
+36,Wed,13:00-14:55,CHY122,P,Room_3,Sharath  Kandambeth,CHY1YR
+41,Wed,13:00-14:55,CHY216,P,Room_4,Kshatresh Dutta Dubey,CHY2YR
+56,Wed,13:00-14:55,CHY522/CHY5022,P,Room_5,Nidhi  Malhotra,CHY3YR
+12,Wed,17:10-18:05,BIO new code,T,Room_1,Naga Suresh Veerapu,BIO1YR
+35,Wed,17:10-18:05,CHY122,T,Room_2,Santanu  Ghosh,CHY1YR
