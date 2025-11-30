@@ -16,7 +16,7 @@ TThis project implements an **AI-powered, fully interactive university timetable
 2) **Agentic reasoning** (LLM running via LangGraph)
 3) **Human-in-the-loop repair workflows**
 4) **Strict university timeslot rules** extracted from the official PDF grid
-5_ **Conflict-free scheduling** for rooms, faculty, and student groups
+5) **Conflict-free scheduling** for rooms, faculty, and student groups
 6) **Override + forced override** (admin-style manual slot assignment)
 7) **Interactive Streamlit dashboard**
 
