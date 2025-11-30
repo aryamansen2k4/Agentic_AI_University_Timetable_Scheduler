@@ -46,14 +46,14 @@ I plan to excecute these steps to complete my project.:
 2) [DONE] **Step 2: Constraint Solver Implementation and Official Timeslot Parser**: I implemented hard constraints (no double-booking, room type matching) and pattern constraints (forcing Monday/Wednesday/Friday symmetry for 3-credit courses). Converted the university PDF timeslot grid into a structured list of valid slots with day, start–end times, allowed components, and slot families. (```solver.py``` and ```timeslots.py```)
 
 3) [DONE] **Step 3:  Build LangGraph Agent Pipeline**: Createed:
-  - An **Inspector Agent** that summarizes schedule quality and finds issues.
-  - A **Repair Agent** that applies overrides when the user issues commands. (```graph.py``` and ```inspector.py```)
+  1) An **Inspector Agent** that summarizes schedule quality and finds issues.
+  2) A **Repair Agent** that applies overrides when the user issues commands. (```graph.py``` and ```inspector.py```)
 
 4) **[DONE] Step 5 – Streamlit Dashboard**: Built a UI with:
-  - file upload,
-  - live schedule display,
-  - chat panel for agent interaction,
-  - override controls,
-  - download/export options.
+  1) file upload,
+  2) live schedule display,
+  3) chat panel for agent interaction,
+  4) override controls,
+  5) download/export options.
 
 5) **[DONE] Step 6 – Testing With Real Data**: Use large real-world semester sheets to test performance, conflict accuracy, and the override workflow.
